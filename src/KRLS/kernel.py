@@ -1,0 +1,168 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Feb 25 17:17:41 2025
+
+@author: Kaike Sa Teles Rocha Alves
+@email: kaikerochaalves@outlook.com
+"""
+
+
+# Import libraries
+
+import numpy as np
+
+class Kernel:
+    
+    def __init__(self, kernel_type="RBF", **kwargs):
+        
+        # Define valid kernel types and their required parameters
+        self.valid_kernels = {
+            "Linear": self.Linear,
+            "Polynomial": self.Polynomial,
+            "RBF": self.RBF,
+            "Gaussian": self.Gaussian,
+            "Sigmoid": self.Sigmoid,
+            "Powered": self.Powered,
+            "Log": self.Log,
+            "GeneralizedGaussian": self.GeneralizedGaussian,
+            "Hybrid": self.Hybrid
+        }
+        
+        # Check if the kernel type is valid
+        if kernel_type not in self.valid_kernels:
+            raise ValueError(f"Invalid kernel type: {kernel_type}. Choose from {list(self.valid_kernels.keys())}.")
+        
+        # Store kernel type and parameters
+        self.kernel_type = kernel_type
+        self.params = kwargs
+        
+    def is_numeric_and_finite(self, array):
+        return np.isfinite(array).all() and np.issubdtype(np.array(array).dtype, np.number) and isinstance(array, np.ndarray)
+        
+    def x_format(self, x1, x2):
+        
+        # Check if is numeric, finit, and array
+        if not self.is_numeric_and_finite(x1) or not self.is_numeric_and_finite(x2):
+            raise ValueError(
+                "X contains incompatible values."
+                " Check X for non-numeric or infinity values"
+                )
+            
+        # Check the number of dimensions
+        if len(x1.shape) == 1 and len(x2.shape) == 1:
+            # Check the dimension
+            if x1.shape[0] == x2.shape[0]:
+                return x1, x2
+            else:
+                raise ValueError(
+                    "X1 and X2 contains incompatible shape."
+                    )
+        
+        elif len(x1.shape) == 2 and len(x2.shape) == 2:
+            # Check if one of the dimensions is 1
+            if x1.shape[0] == 1 or x1.shape[1] == 1:
+                x1 = x1.ravel()
+            else:
+                raise ValueError(
+                    "X1 and X2 contains incompatible shape."
+                    )
+            
+            # Check if one of the dimensions is 1
+            if x2.shape[0] == 1 or x2.shape[1] == 1:
+                x2 = x2.ravel()
+            else:
+                raise ValueError(
+                    "X1 and X2 contains incompatible shape."
+                    )
+                
+            # Check the dimension
+            if x1.shape[0] == x2.shape[0]:
+                return x1, x2
+            else:
+                raise ValueError(
+                    "X1 and X2 contains incompatible shape."
+                    )
+                
+        else:
+            raise ValueError(
+                "X1 or X2 are multidimensional."
+                )
+    
+    def is_symmetric(self, A, tol=1e-8):
+        return np.allclose(A, A.T, atol=tol)
+    
+    def is_positive_definite(self, A):
+        try:
+            np.linalg.cholesky(A)
+            return True
+        except np.linalg.LinAlgError:
+            return False
+    
+    def is_symmetric_positive_definite(self, A, tol=1e-8):
+        return self.is_symmetric(A, tol) and self.is_positive_definite(A)
+    
+    def compute(self, X1, X2, **kwargs):
+        
+        # Validate the format of X1 and X2
+        X1, X2 = self.x_format(X1, X2)
+        
+        # Combine instance parameters with additional arguments
+        params = {**self.params, **kwargs}
+
+        
+        """Compute the chosen kernel function dynamically."""
+        return self.valid_kernels[self.kernel_type](X1, X2, **params)
+    
+    # Kernel function definitions:
+    
+    @staticmethod
+    def Linear(X1, X2, **kwargs):
+        return np.sum(X1*X2)
+
+    @staticmethod
+    def Polynomial(X1, X2, a=1, b=1, d=2, **kwargs):
+        return (a * np.sum(X1*X2) + b) ** d
+
+    @staticmethod
+    def RBF(X1, X2, sigma=1.0, **kwargs):
+        return np.exp(-np.sum((X1 - X2) ** 2) / (sigma**2))
+    
+    @staticmethod
+    def Gaussian(X1, X2, sigma=1.0, **kwargs):
+        return np.exp(-np.sum((X1 - X2) ** 2) / (2 * sigma**2))
+
+    @staticmethod
+    def Sigmoid(X1, X2, sigma=1.0, r=0, **kwargs):
+        return np.tanh(sigma * np.sum(X1*X2) + r)
+
+    @staticmethod
+    def Powered(X1, X2, beta=1, **kwargs):
+        return - ((np.sum((X1 - X2) * 2))**(1/2)) ** beta
+
+    @staticmethod
+    def Log(X1, X2, beta=1, **kwargs):
+        return - np.log( 1 + ((np.sum((X1 - X2) * 2))**(1/2)) ** beta )
+
+    def GeneralizedGaussian(self, X1, X2, A=None, **kwargs):
+                
+        if A is None:
+            raise ValueError(
+                "A SPD matrix was not informed."
+                )
+            
+        if not self.is_symmetric_positive_definite(A):
+            
+            raise ValueError(
+                "The matrix A is not SPD."
+                )
+            
+        if X1.shape[0] != A.shape[0] or X2.shape[0] != A.shape[0]:
+            raise ValueError(
+                "The vectors are not compatible with the shape of the matrix A."
+                )
+            
+        return np.exp( - (X1-X2).reshape(1,-1) @ A @ (X1-X2).reshape(-1,1) )
+
+    @staticmethod
+    def Hybrid(X1, X2, sigma=1.0, tau=1.0, d=2, **kwargs):
+        return ( np.exp( - np.sum((X1 - X2) ** 2) / (sigma**2))) * (tau + np.sum(X1*X2)) ** d
