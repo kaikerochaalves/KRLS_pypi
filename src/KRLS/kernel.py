@@ -13,7 +13,46 @@ import numpy as np
 
 class Kernel:
     
-    def __init__(self, kernel_type="RBF", **kwargs):
+    def __init__(self, kernel_type="Gaussian", validate_array = False, **kwargs):
+        
+        """
+        Kernel class for computing various kernel functions.
+        
+        Parameters
+        ----------
+        kernel_type : str, optional (default="Gaussian")
+            Specifies the type of kernel function to use. Must be one of:
+            "Linear", "Polynomial", "RBF", "Gaussian", "Sigmoid", "Powered", "Log", 
+            "GeneralizedGaussian", "Hybrid".
+            
+            The type of kernel function to use. Available options are:
+            - "Linear" (no hyperparameters required)
+            - "Polynomial" (requires 'a', 'b', and 'd')
+            - "RBF" (requires 'sigma')
+            - "Gaussian" (requires 'sigma')
+            - "Sigmoid" (requires 'sigma' and 'r')
+            - "Powered" (requires 'beta')
+            - "Log" (requires 'beta')
+            - "GeneralizedGaussian" (requires 'A', a symmetric positive definite matrix)
+            - "Hybrid" (requires 'sigma', 'tau', and 'd')
+        
+        validate_array : bool, optional (default=False)
+            If True, validates input arrays to ensure they are numeric, finite, and properly formatted.
+        
+        **kwargs : dict, optional
+            Additional parameters specific to the chosen kernel function.
+        
+        Raises
+        ------
+        ValueError
+            If an invalid kernel type is provided.
+        
+        Examples
+        --------
+        >>> kernel = Kernel(kernel_type="Polynomial", a=2, b=1, d=3)
+        >>> X1, X2 = np.array([1, 2, 3]), np.array([4, 5, 6])
+        >>> kernel.compute(X1, X2)
+        """
         
         # Define valid kernel types and their required parameters
         self.valid_kernels = {
@@ -32,6 +71,8 @@ class Kernel:
         if kernel_type not in self.valid_kernels:
             raise ValueError(f"Invalid kernel type: {kernel_type}. Choose from {list(self.valid_kernels.keys())}.")
         
+        # Validate the array
+        self.validate_array = validate_array
         # Store kernel type and parameters
         self.kernel_type = kernel_type
         self.params = kwargs
@@ -103,8 +144,9 @@ class Kernel:
     
     def compute(self, X1, X2, **kwargs):
         
-        # Validate the format of X1 and X2
-        X1, X2 = self.x_format(X1, X2)
+        if self.validate_array:
+            # Validate the format of X1 and X2
+            X1, X2 = self.x_format(X1, X2)
         
         # Combine instance parameters with additional arguments
         params = {**self.params, **kwargs}
@@ -137,31 +179,33 @@ class Kernel:
 
     @staticmethod
     def Powered(X1, X2, beta=1, **kwargs):
-        return - ((np.sum((X1 - X2) * 2))**(1/2)) ** beta
+        return - ((np.sum((X1 - X2) ** 2))**(1/2)) ** beta
 
     @staticmethod
     def Log(X1, X2, beta=1, **kwargs):
-        return - np.log( 1 + ((np.sum((X1 - X2) * 2))**(1/2)) ** beta )
+        return - np.log( 1 + ((np.sum((X1 - X2) ** 2))**(1/2)) ** beta )
 
     def GeneralizedGaussian(self, X1, X2, A=None, **kwargs):
+        
+        if self.validate_array:
+        
+            if A is None:
+                raise ValueError(
+                    "A SPD matrix was not informed."
+                    )
                 
-        if A is None:
-            raise ValueError(
-                "A SPD matrix was not informed."
-                )
+            if not self.is_symmetric_positive_definite(A):
+                
+                raise ValueError(
+                    "The matrix A is not SPD."
+                    )
+                
+            if X1.shape[0] != A.shape[0] or X2.shape[0] != A.shape[0]:
+                raise ValueError(
+                    "The vectors are not compatible with the shape of the matrix A."
+                    )
             
-        if not self.is_symmetric_positive_definite(A):
-            
-            raise ValueError(
-                "The matrix A is not SPD."
-                )
-            
-        if X1.shape[0] != A.shape[0] or X2.shape[0] != A.shape[0]:
-            raise ValueError(
-                "The vectors are not compatible with the shape of the matrix A."
-                )
-            
-        return np.exp( - (X1-X2).reshape(1,-1) @ A @ (X1-X2).reshape(-1,1) )
+        return np.exp( - ((X1-X2).reshape(1,-1) @ A @ (X1-X2).reshape(-1,1)).item() )
 
     @staticmethod
     def Hybrid(X1, X2, sigma=1.0, tau=1.0, d=2, **kwargs):

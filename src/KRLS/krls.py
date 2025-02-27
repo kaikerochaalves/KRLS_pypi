@@ -8,24 +8,45 @@ Created on Tue Feb 25 15:08:53 2025
 
 # Importing libraries
 import numpy as np
+from kernel import Kernel
 
 class base():
     
-    def __init__(self, **kwargs):
+    def __init__(self, kernel_type, validate_array, **kwargs):
+        
+        """
+        Base class for kernel-based learning models.
+        
+        Parameters
+        ----------
+        kernel_type : str
+            The type of kernel function to use. Must be one of: 'Linear', 'Polynomial', 'RBF', 'Gaussian',
+            'Sigmoid', 'Powered', 'Log', 'GeneralizedGaussian', 'Hybrid'.
+        
+        validate_array : bool
+            If True, input arrays are validated before computation.
+        
+        **kwargs : dict
+            Additional hyperparameters depending on the chosen kernel:
+            - 'a', 'b', 'd' : Polynomial kernel parameters
+            - 'sigma' : Gaussian, RBF, and Hybrid kernel parameter
+            - 'r' : Sigmoid kernel parameter
+            - 'beta' : Powered and Log kernel parameter
+            - 'tau' : Hybrid kernel parameter
+        """
         
         # List of predefined valid parameters
-        self.valid_params = ['kernel_type', 'a', 'b', 'd', 'sigma', 'r', 'beta', 'tau']  # Adjust this list as needed
+        self.valid_params = ['kernel_type', 'validate_array', 'a', 'b', 'd', 'sigma', 'r', 'beta', 'tau']  # Adjust this list as needed
 
         # Initialize the dictionary
-        self.hyperparameters_dict = {}
-
+        self.hyperparameters_dict = {"kernel_type": kernel_type, "validate_array": validate_array}
+        
         # Default values for parameters
         self.default_values = {
-            'kernel_type': 'Hybrid',
             'a': 1,
             'b': 1,
             'd': 2, 
-            'sigma': 1.0,
+            'sigma': 10,
             'r': 0,
             'beta': 1.0,
             'tau': 1.0, 
@@ -47,21 +68,27 @@ class base():
                 self.hyperparameters_dict[param] = default_value
         
         # Filter correct hyperparameters
-        if self.hyperparameters_dict['kernel_type'] in ["Gaussian","RBF"]:
-            keys = ['kernel_type', 'sigma']
+        if kernel_type in ["Gaussian","RBF"]:
+            keys = ['kernel_type', 'validate_array', 'sigma']
             self.kwargs = {key: self.hyperparameters_dict.get(key, None) for key in keys}
-        elif self.hyperparameters_dict['kernel_type'] in ["Linear", "GeneralizedGaussian"]:
-            keys = ['kernel_type']
+        elif kernel_type in ['Linear', 'GeneralizedGaussian']:
+            keys = ['kernel_type', 'validate_array']
             self.kwargs = {key: self.hyperparameters_dict.get(key, None) for key in keys}
-        elif self.hyperparameters_dict['kernel_type'] == "Polynomial":
-            keys = ['kernel_type', 'a', 'b', 'd']
+        elif kernel_type == "Polynomial":
+            keys = ['kernel_type', 'validate_array', 'a', 'b', 'd']
             self.kwargs = {key: self.hyperparameters_dict.get(key, None) for key in keys}
-        elif self.hyperparameters_dict['kernel_type'] in ["Powered","Log"]:
-            keys = ['kernel_type', 'beta']
+        elif kernel_type in ["Powered","Log"]:
+            keys = ['kernel_type', 'validate_array', 'beta']
             self.kwargs = {key: self.hyperparameters_dict.get(key, None) for key in keys}
-        elif self.hyperparameters_dict['kernel_type'] == "Hybrid":
-            keys = ['kernel_type', 'sigma', 'tau', 'd']
+        elif kernel_type == "Hybrid":
+            keys = ['kernel_type', 'validate_array', 'sigma', 'tau', 'd']
             self.kwargs = {key: self.hyperparameters_dict.get(key, None) for key in keys}
+        elif kernel_type == "Sigmoid":
+            keys = ['kernel_type', 'validate_array', 'sigma', 'r']
+            self.kwargs = {key: self.hyperparameters_dict.get(key, None) for key in keys}
+        
+        # Initialize the kernel
+        self.kernel = Kernel(**self.kwargs)
         
         # Initialize the dictionary
         self.parameters_dict = {}
@@ -92,22 +119,52 @@ class base():
 
 class KRLS(base):
     
-    def __init__(self, nu = 0.1, sigma = 0.1, **kwargs):
+    def __init__(self, nu = 0.1, kernel_type = 'Gaussian', validate_array = False, **kwargs):
+        
+        """
+        Kernel Recursive Least Squares (KRLS) model.
+        
+        Parameters
+        ----------
+        nu : float, default=0.1
+            Accuracy parameter determining the level of sparsity. Must be a positive float.
+        
+        kernel_type : str, default='Gaussian'
+            The type of kernel function to use. Must be one of the supported kernels in `base`.
+        
+        validate_array : bool, default=False
+            If True, input arrays are validated before computation.
+        
+        **kwargs : dict
+            Additional kernel-specific hyperparameters passed to the `base` class.
+        """
         
         # Call __init__ of the base class
-        super().__init__(**kwargs)
+        super().__init__(kernel_type, validate_array, **kwargs)
         
         if not (nu > 0):
             raise ValueError("nu must be a positive float.")
-        if not (sigma > 0):
-            raise ValueError("sigma must be a positive float.")
         
         # Hyperparameters
-        # Kernel width
-        self.sigma = sigma
+        # Kernel type
+        self.kernel_type = kernel_type
         # nu is an accuracy parameter determining the level of sparsity
         self.nu = nu
+        # Validate array
+        self.validate_array = validate_array
         
+    def get_params(self, deep=True):
+        return {
+            'nu': self.nu,
+            'kernel_type': self.kernel_type,
+            'validate_array': self.validate_array,
+            **self.kwargs  # Merge self.kwargs into the dictionary
+        }
+
+    def set_params(self, **params):
+        for key, value in params.items():
+            setattr(self, key, value)
+        return self
          
     def fit(self, X, y):
         
@@ -164,12 +221,16 @@ class KRLS(base):
 
             # Prepare the k-th input vector
             x = X[k,].reshape((1,-1)).T
+            
+            # If the kernel type is the GeneralizedGaussian, update the SPD matrix
+            if self.kernel_type == "GeneralizedGaussian":
+                self.A -= ((self.A @ x @ x.T @ self.A) / (1 + x.T @ self.A @ x))
                       
             # Update KRLS
             k_til = self.KRLS(x, y[k])
             
             # Compute output
-            Output = self.parameters_dict["Theta"].T @ k_til
+            Output = np.dot(self.parameters_dict["Theta"], k_til)
             
             # Store results
             self.y_pred_training = np.append(self.y_pred_training, Output )
@@ -188,8 +249,8 @@ class KRLS(base):
                 " Check X for non-numeric or infinity values"
             )
             
-        # # Be sure that X is with a correct shape
-        # X = X.reshape(-1,self.parameters.loc[self.parameters.index[0],'Center'].shape[0])
+        # Be sure that X is with a correct shape
+        X = X.reshape(-1,self.parameters_dict["Dict"].shape[0])
         
         # Preallocate space for the outputs for better performance
         self.y_pred_test = np.zeros((X.shape[0]))
@@ -199,80 +260,113 @@ class KRLS(base):
             # Prepare the first input vector
             x = X[k,].reshape((1,-1)).T
 
-            # Compute k
-            k_til = np.array(())
-            for ni in range(self.parameters_dict["Dict"].shape[1]):
-                k_til = np.append(k_til, [self.Kernel(self.parameters_dict["Dict"][:,ni].reshape(-1,1), x)])
-            k_til = k_til.reshape(k_til.shape[0],1)
-            
+            # Compute k_til
+            n_cols = self.parameters_dict["Dict"].shape[1]
+            # If the kernel type is the GeneralizedGaussian, inform matrix SPD matrix
+            if self.kernel_type == "GeneralizedGaussian":
+                k_til = np.array([self.kernel.compute(self.parameters_dict["Dict"][:, ni].reshape(-1, 1), x, A = self.A) for ni in range(n_cols)])
+            else:
+                k_til = np.array([self.kernel.compute(self.parameters_dict["Dict"][:, ni].reshape(-1, 1), x) for ni in range(n_cols)])
+                
             # Compute the output
-            Output = self.parameters_dict["Theta"].T @ k_til
+            Output = np.dot(self.parameters_dict["Theta"], k_til)
             
             # Store the results
-            self.y_pred_test[k,] = Output.item()
+            self.y_pred_test[k,] = Output
             
         return self.y_pred_test
-
-    def Kernel(self, x1, x2):
-        k = np.exp( - ( 1/2 ) * ( (np.linalg.norm( x1 - x2 ))**2 ) / ( self.sigma**2 ) )
-        return k
     
     def Initialize(self, x, y):
         
+        # If the kernel type is the GeneralizedGaussian, initialize the SPD matrix
+        if self.kernel_type == "GeneralizedGaussian":
+            self.A = np.eye(x.shape[0])
+        
         # Compute the variables for the dictionary
-        k11 = self.Kernel(x, x)
-        Kinv = np.ones((1,1)) / ( k11 )
-        alpha = np.ones((1,1)) * y / k11
+        # Check if the kernel type is the Generalized Gaussian
+        if self.kernel_type == "GeneralizedGaussian":
+            k11 = self.kernel.compute(x, x, A = self.A)
+        else:
+            k11 = self.kernel.compute(x, x)
+        
+        # Update Kinv and Theta
+        Kinv = np.ones((1,1)) / ( k11 ) if k11 != 0 else np.ones((1,1))
+        Theta = np.ones((1,)) * y / k11 if k11 != 0 else np.ones((1,))
         
         # Fill the dictionary
-        self.parameters_dict.update({"Kinv": Kinv, "Theta": alpha, "P": np.ones((1,1)), "m": 1., "Dict": x})
+        self.parameters_dict.update({"Kinv": Kinv, "Theta": Theta, "P": np.ones((1,1)), "m": 1., "Dict": x})
         
         # Initialize first output and residual
         self.y_pred_training = np.append(self.y_pred_training, y)
         self.ResidualTrainingPhase = np.append(self.ResidualTrainingPhase, 0.)
         
     def KRLS(self, x, y):
-    
-        # Compute k
-        k = np.array(())
-        for ni in range(self.parameters_dict["Dict"].shape[1]):
-            k = np.append(k, [self.Kernel(self.parameters_dict["Dict"][:,ni].reshape(-1,1), x)])
-        k_til = k.reshape(-1,1)
+                        
+        # Compute k_til
+        n_cols = self.parameters_dict["Dict"].shape[1]
+        # If the kernel type is the GeneralizedGaussian, inform matrix SPD matrix
+        if self.kernel_type == "GeneralizedGaussian":
+            k_til = np.array([self.kernel.compute(self.parameters_dict["Dict"][:, ni].reshape(-1, 1), x, A = self.A) for ni in range(n_cols)])
+        else:
+            k_til = np.array([self.kernel.compute(self.parameters_dict["Dict"][:, ni].reshape(-1, 1), x) for ni in range(n_cols)])
+        
         # Compute a
-        a = np.matmul(self.parameters_dict["Kinv"], k)
-        A = a.reshape(-1,1)
-        delta = self.Kernel(x, x) - ( k_til.T @ A ).item()
+        a = np.matmul(self.parameters_dict["Kinv"], k_til)
+        
+        # Compute delta
+        # Check if the kernel type is the Generalized Gaussian
+        if self.kernel_type == "GeneralizedGaussian":
+            delta = self.kernel.compute(x, x, A = self.A) - np.dot(k_til, a).item()
+        else:
+            delta = self.kernel.compute(x, x) - np.dot(k_til, a).item()
+        
+        # Avoid zero division
         if delta == 0:
             delta = 1.
-        # Estimating the error
-        EstimatedError = ( y - np.matmul(k_til.T, self.parameters_dict["Theta"]) ).item()
+            
+        # Compute the residual
+        EstimatedError = y - np.dot(k_til, self.parameters_dict["Theta"]) 
+        
         # Novelty criterion
         if delta > self.nu:
+            
+            # Update Dict in-place
             self.parameters_dict["Dict"] = np.hstack([self.parameters_dict["Dict"], x])
-            self.parameters_dict["m"] = self.parameters_dict["m"] + 1
-            # Updating Kinv                      
-            self.parameters_dict["Kinv"] = (1/delta)*(self.parameters_dict["Kinv"] * delta + np.matmul(A, A.T))
-            self.parameters_dict["Kinv"] = np.lib.pad(self.parameters_dict["Kinv"], ((0,1),(0,1)), 'constant', constant_values=(0))
-            sizeKinv = self.parameters_dict["Kinv"].shape[0] - 1
-            self.parameters_dict["Kinv"][sizeKinv,sizeKinv] = (1/delta)
-            self.parameters_dict["Kinv"][0:sizeKinv,sizeKinv] = (1/delta)*(-a)
-            self.parameters_dict["Kinv"][sizeKinv,0:sizeKinv] = (1/delta)*(-a)
-            # Updating P
-            self.parameters_dict["P"] = np.lib.pad(self.parameters_dict["P"], ((0,1),(0,1)), 'constant', constant_values=(0))
-            sizeP = self.parameters_dict["P"].shape[0] - 1
-            self.parameters_dict["P"][sizeP,sizeP] = 1.
-            # Updating alpha
-            self.parameters_dict["Theta"] = self.parameters_dict["Theta"] - ( ( A / delta ) * EstimatedError )
-            self.parameters_dict["Theta"] = np.vstack([self.parameters_dict["Theta"], ( 1 / delta ) * EstimatedError ])
-            k_til = np.append(k_til, self.Kernel(x, x).reshape(1,1), axis=0)
+            self.parameters_dict["m"] += 1
+            
+            # Update Kinv                      
+            self.parameters_dict["Kinv"] = (1/delta)*(self.parameters_dict["Kinv"] * delta + np.outer(a, a))
+            self.parameters_dict["Kinv"] = np.pad(self.parameters_dict["Kinv"], ((0, 1), (0, 1)), mode='constant')
+            self.parameters_dict["Kinv"][-1, -1] = 1/delta
+            self.parameters_dict["Kinv"][:-1, -1] = self.parameters_dict["Kinv"][-1, :-1] = (1/delta) * (-a)
+            
+            # Update P similarly
+            self.parameters_dict["P"] = np.pad(self.parameters_dict["P"], ((0, 1), (0, 1)), mode='constant')
+            self.parameters_dict["P"][-1, -1] = 1.
+                        
+            # Updating Theta
+            self.parameters_dict["Theta"] -= (a / delta) * EstimatedError
+            self.parameters_dict["Theta"] = np.append(self.parameters_dict["Theta"], ( 1 / delta ) * EstimatedError )
+            
+            # Update k_til
+            if self.kernel_type == "GeneralizedGaussian":
+                k_til = np.append(k_til, self.kernel.compute(x, x, A = self.A))
+            else:
+                k_til = np.append(k_til, self.kernel.compute(x, x))
         
         else:
-
-            # Calculating q
-            q = np.matmul( self.parameters_dict["P"], A) / ( 1 + np.matmul(np.matmul(A.T, self.parameters_dict["P"]), A ) )
-            # Updating P
-            self.parameters_dict["P"] = self.parameters_dict["P"] - (np.matmul(np.matmul(np.matmul(self.parameters_dict["P"], A), A.T), self.parameters_dict["P"])) / ( 1 + np.matmul(np.matmul(A.T, self.parameters_dict["P"]), A))
-            # Updating alpha
-            self.parameters_dict["Theta"] = self.parameters_dict["Theta"] + np.matmul(self.parameters_dict["Kinv"], q) * EstimatedError
+            
+            # Precompute terms at once
+            A_P = np.dot(self.parameters_dict["P"], a)
+            A_P_A = np.dot( A_P, a )
+            
+            # Compute q more efficiently
+            q = A_P / (1 + A_P_A)
+            
+            # Update P
+            self.parameters_dict["P"] -= (np.matmul(np.outer(A_P, a), self.parameters_dict["P"])) / (1 + A_P_A)
+            
+            # Update Theta
+            self.parameters_dict["Theta"] += np.dot(self.parameters_dict["Kinv"], q) * EstimatedError
         
         return k_til
