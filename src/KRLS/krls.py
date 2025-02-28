@@ -119,7 +119,7 @@ class base():
 
 class KRLS(base):
     
-    def __init__(self, nu = 0.1, kernel_type = 'Gaussian', validate_array = False, **kwargs):
+    def __init__(self, nu = 0.1, dict_max = 100, validate_array = False, kernel_type = 'Gaussian', **kwargs):
         
         """
         Kernel Recursive Least Squares (KRLS) model.
@@ -128,6 +128,9 @@ class KRLS(base):
         ----------
         nu : float, default=0.1
             Accuracy parameter determining the level of sparsity. Must be a positive float.
+            
+        dict_max : int, default=100
+            Accuracy parameter determining the level of sparsity. Must be a integer greater than 1.
         
         kernel_type : str, default='Gaussian'
             The type of kernel function to use. Must be one of the supported kernels in `base`.
@@ -144,20 +147,26 @@ class KRLS(base):
         
         if not (nu > 0):
             raise ValueError("nu must be a positive float.")
+            
+        if (not (dict_max > 1)) and (not(isinstance(dict_max, (int)))):
+            raise ValueError("nu must be a positive float.")
         
         # Hyperparameters
-        # Kernel type
-        self.kernel_type = kernel_type
         # nu is an accuracy parameter determining the level of sparsity
         self.nu = nu
+        # Maximum number of vectors in the dictionary
+        self.dict_max = dict_max
         # Validate array
         self.validate_array = validate_array
+        # Kernel type
+        self.kernel_type = kernel_type
         
     def get_params(self, deep=True):
         return {
             'nu': self.nu,
-            'kernel_type': self.kernel_type,
+            'dict_max': self.dict_max,
             'validate_array': self.validate_array,
+            'kernel_type': self.kernel_type,
             **self.kwargs  # Merge self.kwargs into the dictionary
         }
 
@@ -328,7 +337,7 @@ class KRLS(base):
         EstimatedError = y - np.dot(k_til, self.parameters_dict["Theta"]) 
         
         # Novelty criterion
-        if delta > self.nu:
+        if delta > self.nu and n_cols < self.dict_max:
             
             # Update Dict in-place
             self.parameters_dict["Dict"] = np.hstack([self.parameters_dict["Dict"], x])
