@@ -245,6 +245,70 @@ class KRLS(base):
             self.y_pred_training = np.append(self.y_pred_training, Output )
             self.ResidualTrainingPhase = np.append(self.ResidualTrainingPhase,(y[k]) - Output )
             
+    def evolve(self, X, y):
+        
+        # Be sure that X is with a correct shape
+        X = X.reshape(-1,self.parameters_dict["Dict"].shape[0])
+        
+        # Check the format of y
+        if not isinstance(y, (np.ndarray)):
+            y = np.array(y, ndmin=1)
+            
+        # Correct format X to 2d
+        if len(X.shape) == 1:
+            X = X.reshape(-1,1)
+        
+        # Check wheather y is 1d
+        if len(y.shape) > 1 and y.shape[1] > 1:
+            raise TypeError(
+                "This algorithm does not support multiple outputs. "
+                "Please, give only single outputs instead."
+            )
+        
+        if len(y.shape) > 1:
+            y = y.ravel()
+        
+        # Check wheather y is 1d
+        if X.shape[0] != y.shape[0]:
+            raise TypeError(
+                "The number of samples of X are not compatible with the number of samples in y. "
+            )
+            
+        # Check if the inputs contain valid numbers
+        if not self.is_numeric_and_finite(X):
+            raise ValueError(
+                "X contains incompatible values."
+                " Check X for non-numeric or infinity values"
+            )
+            
+        # Check if the inputs contain valid numbers
+        if not self.is_numeric_and_finite(y):
+            raise ValueError(
+                "y contains incompatible values."
+                " Check y for non-numeric or infinity values"
+            )
+        
+        for k in range(1, X.shape[0]):
+
+            # Prepare the k-th input vector
+            x = X[k,].reshape((1,-1)).T
+            
+            # If the kernel type is the GeneralizedGaussian, update the SPD matrix
+            if self.kernel_type == "GeneralizedGaussian":
+                self.A -= ((self.A @ x @ x.T @ self.A) / (1 + x.T @ self.A @ x))
+                      
+            # Update KRLS
+            k_til = self.KRLS(x, y[k])
+            
+            # Compute output
+            Output = np.dot(self.parameters_dict["Theta"], k_til)
+            
+            # Store the prediction
+            self.y_pred_training = np.append(self.y_pred_training, Output)
+            # Compute the error
+            residual = abs(Output - y[k])
+            self.ResidualTrainingPhase = np.append(self.ResidualTrainingPhase, residual**2)
+            
     def predict(self, X):
         
         # Correct format X to 2d
