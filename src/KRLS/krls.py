@@ -7,6 +7,7 @@ Created on Tue Feb 25 15:08:53 2025
 """
 
 # Importing libraries
+import torch
 import numpy as np
 from kernel import Kernel
 
@@ -29,14 +30,17 @@ class base():
         **kwargs : dict
             Additional hyperparameters depending on the chosen kernel:
             - 'a', 'b', 'd' : Polynomial kernel parameters
-            - 'sigma' : Gaussian, RBF, and Hybrid kernel parameter
+            - 'gamma': RBF kernel parameter
+            - 'sigma' : Gaussian, and Hybrid kernel parameter
             - 'r' : Sigmoid kernel parameter
             - 'beta' : Powered and Log kernel parameter
             - 'tau' : Hybrid kernel parameter
+            - 'lr' : GeneralizedGaussian kernel parameters
+            - 'epochs' : GeneralizedGaussian kernel parameters
         """
         
         # List of predefined valid parameters
-        self.valid_params = ['kernel_type', 'validate_array', 'a', 'b', 'd', 'sigma', 'r', 'beta', 'tau']  # Adjust this list as needed
+        self.valid_params = ['kernel_type', 'validate_array', 'a', 'b', 'd', 'gamma', 'sigma', 'r', 'beta', 'tau', 'lr', 'epochs']  # Adjust this list as needed
 
         # Initialize the dictionary
         self.hyperparameters_dict = {"kernel_type": kernel_type, "validate_array": validate_array}
@@ -46,10 +50,13 @@ class base():
             'a': 1,
             'b': 1,
             'd': 2, 
+            'gamma': 1,
             'sigma': 10,
             'r': 0,
             'beta': 1.0,
             'tau': 1.0, 
+            'lr': 0.01, 
+            'epochs': 100, 
         }
 
         # Check if any parameters are in kwargs and are valid
@@ -68,10 +75,13 @@ class base():
                 self.hyperparameters_dict[param] = default_value
         
         # Filter correct hyperparameters
-        if kernel_type in ["Gaussian","RBF"]:
+        if kernel_type in ["Gaussian"]:
             keys = ['kernel_type', 'validate_array', 'sigma']
             self.kwargs = {key: self.hyperparameters_dict.get(key, None) for key in keys}
-        elif kernel_type in ['Linear', 'GeneralizedGaussian']:
+        if kernel_type in ["RBF"]:
+            keys = ['kernel_type', 'validate_array', 'gamma']
+            self.kwargs = {key: self.hyperparameters_dict.get(key, None) for key in keys}
+        elif kernel_type in ["Linear", "additive_chi2"]:
             keys = ['kernel_type', 'validate_array']
             self.kwargs = {key: self.hyperparameters_dict.get(key, None) for key in keys}
         elif kernel_type == "Polynomial":
@@ -86,6 +96,11 @@ class base():
         elif kernel_type == "Sigmoid":
             keys = ['kernel_type', 'validate_array', 'sigma', 'r']
             self.kwargs = {key: self.hyperparameters_dict.get(key, None) for key in keys}
+        elif kernel_type == "GeneralizedGaussian":
+            keys = ['kernel_type', 'validate_array']
+            self.kwargs = {key: self.hyperparameters_dict.get(key, None) for key in keys}
+            self.lr = self.hyperparameters_dict.get('lr')
+            self.epochs = self.hyperparameters_dict.get('epochs')
         
         # Initialize the kernel
         self.kernel = Kernel(**self.kwargs)
@@ -110,10 +125,13 @@ class base():
         # Example validation rule: Ensure positive float for 'param1' and 'param2'
         if param in ['a', 'b', 'd', 'r'] and not isinstance(value, (int, float)):
             return False
-        if param == 'sigma' and (not isinstance(value, (int, float)) and value <= 0):
+        if param in ['gamma', 'sigma'] and (not isinstance(value, (int, float)) and value <= 0):
             return False
-        # Example validation rule for 'param3' (must be a float between 0 and 10)
         if param == 'beta' and ((not isinstance(value, (int, float)) or not (0 < value <= 1))):
+            return False
+        if param == 'lr' and ((not isinstance(value, (int, float)) or (value <= 0))):
+            return False
+        if param == 'epochs' and ((not isinstance(value, (int)) or (value < 1))):
             return False
         return True
 
@@ -225,15 +243,19 @@ class KRLS(base):
         
         # Initialize KRLS
         self.Initialize(x0, y0)
+        
+        # Compute the SPD matrix
+        if self.kernel_type == "GeneralizedGaussian":
+            self.A = self.learn_A(X, y)
 
         for k in range(1, X.shape[0]):
 
             # Prepare the k-th input vector
             x = X[k,].reshape((1,-1)).T
             
-            # If the kernel type is the GeneralizedGaussian, update the SPD matrix
-            if self.kernel_type == "GeneralizedGaussian":
-                self.A -= ((self.A @ x @ x.T @ self.A) / (1 + x.T @ self.A @ x))
+            # # If the kernel type is the GeneralizedGaussian, update the SPD matrix
+            # if self.kernel_type == "GeneralizedGaussian":
+            #     self.A -= ((self.A @ x @ x.T @ self.A) / (1 + x.T @ self.A @ x))
                       
             # Update KRLS
             k_til = self.KRLS(x, y[k])
@@ -287,15 +309,19 @@ class KRLS(base):
                 "y contains incompatible values."
                 " Check y for non-numeric or infinity values"
             )
+            
+        # Update the SPD matrix
+        if self.kernel_type == "GeneralizedGaussian":
+            self.A = self.learn_A(X, y, self.A)
         
-        for k in range(1, X.shape[0]):
+        for k in range(X.shape[0]):
 
             # Prepare the k-th input vector
             x = X[k,].reshape((1,-1)).T
             
-            # If the kernel type is the GeneralizedGaussian, update the SPD matrix
-            if self.kernel_type == "GeneralizedGaussian":
-                self.A -= ((self.A @ x @ x.T @ self.A) / (1 + x.T @ self.A @ x))
+            # # If the kernel type is the GeneralizedGaussian, update the SPD matrix
+            # if self.kernel_type == "GeneralizedGaussian":
+            #     self.A -= ((self.A @ x @ x.T @ self.A) / (1 + x.T @ self.A @ x))
                       
             # Update KRLS
             k_til = self.KRLS(x, y[k])
@@ -443,3 +469,55 @@ class KRLS(base):
             self.parameters_dict["Theta"] += np.dot(self.parameters_dict["Kinv"], q) * EstimatedError
         
         return k_til
+
+    def compute_loss(self, X, y, A):
+        """Compute the mean squared error loss."""
+        predictions = X @ A  # Matrix multiplication to get predictions
+        loss = torch.mean((predictions - y) ** 2)  # Mean squared error
+        return loss
+    
+    def learn_A(self, X, y, A = None):
+        
+        """Learn A using gradient-based optimization."""
+        
+        # Ensure X and y are torch tensors
+        X = torch.tensor(X, dtype=torch.float32)
+        y = torch.tensor(y, dtype=torch.float32)
+        
+        # Ensure y is a column vector
+        if y.ndimension() == 1:  # if y is a 1D tensor (n_samples,)
+            y = y.unsqueeze(1)  # Reshape y to (n_samples, 1)
+        
+        # Initialize A if not provided
+        if A is None:
+            
+            # Create A
+            d = X.shape[1]
+            A = torch.eye(d, requires_grad=True)  # Initialize A as an identity matrix
+            
+            # Define the optimizer
+            optimizer = torch.optim.Adam([A], lr=self.lr)
+            
+            # Train to get A
+            for _ in range(self.epochs):
+                loss = self.compute_loss(X, y, A)  # Call the loss function here
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+                
+        else:
+            
+            # Prepare A
+            A = torch.tensor(A, dtype=torch.float32, requires_grad=True)
+            
+            # Define the optimizer
+            optimizer = torch.optim.Adam([A], lr=self.lr)
+            
+            # Train to get A
+            loss = self.compute_loss(X, y, A)  # Call the loss function here
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+        
+        return A.detach().numpy()  # Return A as a numpy array
+    

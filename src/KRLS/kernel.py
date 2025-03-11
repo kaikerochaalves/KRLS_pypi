@@ -64,7 +64,8 @@ class Kernel:
             "Powered": self.Powered,
             "Log": self.Log,
             "GeneralizedGaussian": self.GeneralizedGaussian,
-            "Hybrid": self.Hybrid
+            "Hybrid": self.Hybrid,
+            "additive_chi2": self.additive_chi2
         }
         
         # Check if the kernel type is valid
@@ -166,8 +167,8 @@ class Kernel:
         return (a * np.sum(X1*X2) + b) ** d
 
     @staticmethod
-    def RBF(X1, X2, sigma=1.0, **kwargs):
-        return np.exp(-np.sum((X1 - X2) ** 2) / (sigma**2))
+    def RBF(X1, X2, gamma=1.0, **kwargs):
+        return np.exp(- gamma * np.sum((X1 - X2) ** 2))
     
     @staticmethod
     def Gaussian(X1, X2, sigma=1.0, **kwargs):
@@ -179,11 +180,11 @@ class Kernel:
 
     @staticmethod
     def Powered(X1, X2, beta=1, **kwargs):
-        return - ((np.sum((X1 - X2) ** 2))**(1/2)) ** beta
+        return np.exp( - ((np.sum((X1 - X2) ** 2))**(beta/2)) )
 
     @staticmethod
     def Log(X1, X2, beta=1, **kwargs):
-        return - np.log( 1 + ((np.sum((X1 - X2) ** 2))**(1/2)) ** beta )
+        return - np.log( 1 + ((np.sum((X1 - X2) ** 2))**(beta/2)) )
 
     def GeneralizedGaussian(self, X1, X2, A=None, **kwargs):
         
@@ -210,3 +211,7 @@ class Kernel:
     @staticmethod
     def Hybrid(X1, X2, sigma=1.0, tau=1.0, d=2, **kwargs):
         return ( np.exp( - np.sum((X1 - X2) ** 2) / (sigma**2))) * (tau + np.sum(X1*X2)) ** d
+    
+    @staticmethod
+    def additive_chi2(X1, X2):
+        return np.sum((2 * X1 * X2) / (X1 + X2 + 1e-9))  # Adding epsilon to avoid division by zero
