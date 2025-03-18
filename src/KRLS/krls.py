@@ -22,7 +22,7 @@ class base():
         ----------
         kernel_type : str
             The type of kernel function to use. Must be one of: 'Linear', 'Polynomial', 'RBF', 'Gaussian',
-            'Sigmoid', 'Powered', 'Log', 'GeneralizedGaussian', 'Hybrid'.
+            'Sigmoid', 'Powered', 'Log', 'GeneralizedGaussian', 'Hybrid', additive_chi2, and Cosine.
         
         validate_array : bool
             If True, input arrays are validated before computation.
@@ -81,7 +81,7 @@ class base():
         if kernel_type in ["RBF"]:
             keys = ['kernel_type', 'validate_array', 'gamma']
             self.kwargs = {key: self.hyperparameters_dict.get(key, None) for key in keys}
-        elif kernel_type in ["Linear", "additive_chi2"]:
+        elif kernel_type in ["Linear", "additive_chi2", "Cosine"]:
             keys = ['kernel_type', 'validate_array']
             self.kwargs = {key: self.hyperparameters_dict.get(key, None) for key in keys}
         elif kernel_type == "Polynomial":
@@ -310,9 +310,9 @@ class KRLS(base):
                 " Check y for non-numeric or infinity values"
             )
             
-        # Update the SPD matrix
-        if self.kernel_type == "GeneralizedGaussian":
-            self.A = self.learn_A(X, y, self.A)
+        # # Update the SPD matrix
+        # if self.kernel_type == "GeneralizedGaussian":
+        #     self.A = self.learn_A(X, y, self.A)
         
         for k in range(X.shape[0]):
 

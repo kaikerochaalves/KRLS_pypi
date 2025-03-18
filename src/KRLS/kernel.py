@@ -35,6 +35,8 @@ class Kernel:
             - "Log" (requires 'beta')
             - "GeneralizedGaussian" (requires 'A', a symmetric positive definite matrix)
             - "Hybrid" (requires 'sigma', 'tau', and 'd')
+            - "additive_chi2" (no hyperparameters required)
+            - "Cosine" (no hyperparameters required)
         
         validate_array : bool, optional (default=False)
             If True, validates input arrays to ensure they are numeric, finite, and properly formatted.
@@ -65,7 +67,8 @@ class Kernel:
             "Log": self.Log,
             "GeneralizedGaussian": self.GeneralizedGaussian,
             "Hybrid": self.Hybrid,
-            "additive_chi2": self.additive_chi2
+            "additive_chi2": self.additive_chi2,
+            "Cosine": self.Cosine
         }
         
         # Check if the kernel type is valid
@@ -215,3 +218,7 @@ class Kernel:
     @staticmethod
     def additive_chi2(X1, X2):
         return np.sum((2 * X1 * X2) / (X1 + X2 + 1e-9))  # Adding epsilon to avoid division by zero
+    
+    @staticmethod
+    def Cosine(X1, X2):
+        return np.sum((X1 * X2) / (((np.sum((X1) ** 2))**(1/2)) * ((np.sum((X2) ** 2))**(1/2)) + 1e-9))  # Adding epsilon to avoid division by zero
