@@ -1390,12 +1390,12 @@ class QKRLS(base):
             # Return the vectors os kernels
             return k_til
 
-class ANS_KRLS(base):
+class ANS_QKRLS(base):
     
     def __init__(self, N = 1000, nu = 0.01, c = 1e-6, epsilon = 0.01, mu = 1, validate_array = False, kernel_type = 'Gaussian', **kwargs):
         
         """
-        Kernel Recursive Least Squares (ANS-KRLS) model.
+        Adaptive Normalized Sparse Quantized Kernel Recursive Least Squares (ANS-QKRLS) model.
         
         Parameters
         ----------
@@ -1584,7 +1584,7 @@ class ADA_KRLS(base):
     def __init__(self, N = 1000, nu = 0.1, c = 0.01, validate_array = False, kernel_type = 'Gaussian', **kwargs):
         
         """
-        Kernel Recursive Least Squares (ADA-KRLS) model.
+        Adaptive Dynamic Adjustment Kernel Recursive Least Squares (ADA-KRLS) model.
         
         Parameters
         ----------
@@ -1786,7 +1786,7 @@ class QALD_KRLS(base):
     def __init__(self, N = 1000, c = 0.01, nu = 0.1, epsilon1 = 0.1, epsilon2 = 0.1,validate_array = False, kernel_type = 'Gaussian', **kwargs):
         
         """
-        Kernel Recursive Least Squares (ADA-KRLS) model.
+        Quantized Adaptive Dynamic Adjustment Kernel Recursive Least Squares (QALD-KRLS) model.
         
         Parameters
         ----------
