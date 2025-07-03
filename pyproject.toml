@@ -26,5 +26,5 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/kaikerochaalves/KRLS_pypi.git"
-Issues = "https://github.com/kaikerochaalves/KRLS_pypi.git"
+Homepage = "https://github.com/kaikerochaalves/handsonml.git"
+Issues = "https://github.com/kaikerochaalves/handsonml.git"
