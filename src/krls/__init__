@@ -24,8 +24,8 @@ This is the __init__.py file for the package krls.
 It exposes the eFS models for easy import.
 """
 
-from .krls import KRLS, SW_KRLS, EX_KRLS, FB_KRLS, KRLS_T, QKRLS, ADA_KRLS, QALD_KRLS, FD_KRLS
+from .krls import KRLS, SW_KRLS, EX_KRLS, FB_KRLS, KRLS_T, QKRLS, ADA_KRLS, QALD_KRLS, Light_KRLS
 
-__all__ = ["KRLS", "SW_KRLS", "EX_KRLS", "FB_KRLS", "KRLS_T", "QKRLS", "ADA_KRLS", "QALD_KRLS", "FD_KRLS"]
+__all__ = ["KRLS", "SW_KRLS", "EX_KRLS", "FB_KRLS", "KRLS_T", "QKRLS", "ADA_KRLS", "QALD_KRLS", "Light_KRLS"]
 
-__version__ = "0.0.1"  # Update version as needed
+__version__ = "0.0.4"  # Update version as needed

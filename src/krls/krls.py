@@ -21,7 +21,7 @@ enabling me to propose efficient solutions and reduce waste.
 # Importing libraries
 import torch
 import numpy as np
-from kernel import Kernel
+from .kernel import Kernel
 
 class base():
     

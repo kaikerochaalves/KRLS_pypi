@@ -9,7 +9,7 @@ KRLS: Kernel Recursive Least Squares is a package that contains machine learning
     Author: Kaike Sa Teles Rocha Alves (PhD)
     Email: kaikerochaalves@outlook.com or kaike.alves@estudante.ufjf.br
 
-Doi to cite the code: 
+Doi to cite the code: http://dx.doi.org/10.5281/zenodo.15800969
 
 Github repository: https://github.com/kaikerochaalves/KRLS_pypi.git
 
@@ -27,7 +27,7 @@ It provides:
 9. Light Kernel Recursive Least Squares: Light-KRLS
 
 
-Cite: SA TELES ROCHA ALVES, K., & Pestana de Aguiar, E. (2025). NFISiS: new fuzzy inference systems. Zenodo. https://doi.org/10.5281/zenodo.15746843
+Cite: SA TELES ROCHA ALVES, K. (2025). KRLS: Kernel Recursive Least Squares. Zenodo. https://doi.org/10.5281/zenodo.15800969
 
 ## Description:
 
@@ -49,7 +49,7 @@ The library provides 6 models in fuzzy systems, as follows:
 
 To import the KRLS, simply type the command:
 
-    from krls import KRLS
+    from krls.krls import KRLS
 
 Hyperparameters:
 
@@ -83,7 +83,7 @@ Hyperparameters:
 
 Example of KRLS:
 
-    from krls import KRLS
+    from krls.krls import KRLS
     model = KRLS(nu=0.001, N=500, kernel_type="Gaussian", sigma=0.5)
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
@@ -92,7 +92,7 @@ Example of KRLS:
 
 To import the SW-KRLS, simply type the command:
 
-    from krls import SW_KRLS
+    from krls.krls import SW_KRLS
 
 Hyperparameters:
 
@@ -126,7 +126,7 @@ Hyperparameters:
 
 Example of SW_KRLS:
 
-    from krls import SW_KRLS
+    from krls.krls import SW_KRLS
     model = SW_KRLS(N=500, kernel_type="Gaussian", sigma=0.5)
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
@@ -135,7 +135,7 @@ Example of SW_KRLS:
 
 To import the EX-KRLS, simply type the command:
 
-    from krls import EX_KRLS
+    from krls.krls import EX_KRLS
 
 Hyperparameters:
 
@@ -177,7 +177,7 @@ Hyperparameters:
 
 Example of EX_KRLS:
 
-    from krls import EX_KRLS
+    from krls.krls import EX_KRLS
     model = EX_KRLS(kernel_type="Gaussian", sigma=0.5)
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
@@ -186,7 +186,7 @@ Example of EX_KRLS:
 
 To import the EX-KRLS, simply type the command:
 
-    from krls import FB_KRLS
+    from krls.krls import FB_KRLS
 
 Hyperparameters:
 
@@ -216,7 +216,7 @@ Hyperparameters:
 
 Example of FB_KRLS:
 
-    from krls import FB_KRLS
+    from krls.krls import FB_KRLS
     model = FB_KRLS(N=500, kernel_type="Gaussian", sigma=0.5)
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
@@ -225,7 +225,7 @@ Example of FB_KRLS:
 
 To import the KRLS-T, simply type the command:
 
-    from krls import KRLS_T
+    from krls.krls import KRLS_T
 
 Hyperparameters:
 
@@ -255,7 +255,7 @@ Hyperparameters:
 
 Example of KRLS_T:
 
-    from krls import KRLS_T
+    from krls.krls import KRLS_T
     model = KRLS_T(N=500, kernel_type="Gaussian", sigma=0.5)
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
@@ -264,7 +264,7 @@ Example of KRLS_T:
 
 To import the QKRLS, simply type the command:
 
-    from krls import QKRLS
+    from krls.krls import QKRLS
 
 Hyperparameters:
 
@@ -296,7 +296,7 @@ Hyperparameters:
 
 Example of QKRLS:
 
-    from krls import QKRLS
+    from krls.krls import QKRLS
     model = QKRLS(N=500, kernel_type="Gaussian", sigma=0.5)
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
@@ -305,7 +305,7 @@ Example of QKRLS:
 
 To import the ADA-KRLS, simply type the command:
 
-    from krls import ADA_KRLS
+    from krls.krls import ADA_KRLS
 
 Hyperparameters:
 
@@ -338,7 +338,7 @@ Hyperparameters:
 
 Example of ADA-KRLS:
 
-    from krls import ADA_KRLS
+    from krls.krls import ADA_KRLS
     model = ADA_KRLS(N=500, kernel_type="Gaussian", sigma=0.5)
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
@@ -347,7 +347,7 @@ Example of ADA-KRLS:
 
 To import the QALD-KRLS, simply type the command:
 
-    from krls import QALD_KRLS
+    from krls.krls import QALD_KRLS
 
 Hyperparameters:
 
@@ -393,7 +393,7 @@ Hyperparameters:
 
 Example of QALD-KRLS:
 
-    from krls import QALD_KRLS
+    from krls.krls import QALD_KRLS
     model = QALD_KRLS(N=500, epsilon1 = 1e-4, kernel_type="Gaussian", sigma=0.5)
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
@@ -402,7 +402,7 @@ Example of QALD-KRLS:
 
 To import the Light-KRLS, simply type the command:
 
-    from krls import Light_KRLS
+    from krls.krls import Light_KRLS
 
 Hyperparameters:
 
@@ -436,7 +436,7 @@ Hyperparameters:
 
 Example of Light-KRLS:
 
-    from krls import Light_KRLS
+    from krls.krls import Light_KRLS
     model = Light_KRLS(N=500, kernel_type="Gaussian", sigma=0.5)
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
